@@ -9,7 +9,6 @@ type Device struct {
 	Name         string // name for a device could be empty
 	UserId       string // reference to user / owner of device
 	DeviceTypeId string // a device type UUID
-	LastName     string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

@@ -42,7 +42,7 @@ func New() *DeviceDynamoRepo {
 }
 
 func (r *DeviceDynamoRepo) Get(id string) (*device.Device, error) {
-	log.Printf("Fetching all items...from %s table\n", tname)
+	log.Printf("Fetching item with id %s from %s table\n", id, tname)
 	// fetch all items
 	//params := &dynamodb.ScanInput{
 	//	TableName: aws.String(tname),
@@ -77,8 +77,84 @@ func (r *DeviceDynamoRepo) Get(id string) (*device.Device, error) {
 	}
 }
 
-func (r *DeviceDynamoRepo) GetByMacID(id string) (*device.Device, error) {
-	panic("implement me")
+func (r *DeviceDynamoRepo) GetByMacID(macId string) (*device.Device, error) {
+	log.Printf("Fetching item with macId %s from %s table\n", macId, tname)
+	//var queryInput = &dynamodb.QueryInput{
+	//	Limit:     aws.Int64(1),// limit to one since there should only one with this ID
+	//	TableName: aws.String(tname),
+	//	//IndexName: aws.String(deviceIdIndex),
+	//	KeyConditions: map[string]*dynamodb.Condition{
+	//		"Id": {
+	//			ComparisonOperator: aws.String("EQ"),
+	//			AttributeValueList: []*dynamodb.AttributeValue{
+	//				{
+	//					S: aws.String(macId),
+	//				},
+	//			},
+	//		},
+	//	},
+	//}
+
+	//resp, err := r.Db.GetItem(&dynamodb.GetItemInput{
+	//	TableName: aws.String(tname),
+	//	Key: map[string]*dynamodb.AttributeValue{
+	//		"MacAddress": {
+	//			S: aws.String(macId),
+	//		},
+	//	},
+	//})
+
+	// fetch all items
+	params := &dynamodb.ScanInput{
+		TableName: aws.String(tname),
+	}
+	allItems, err := r.Db.Scan(params)
+	if err != nil {
+		log.Fatalf("failed to make Query API call, %v", err)
+		return nil, err
+	}
+
+	var devs []device.Device
+
+	err = dynamodbattribute.UnmarshalListOfMaps(allItems.Items, &devs)
+
+	if err != nil {
+		fmt.Errorf("failed to unmarshal Query result items, %v", err)
+		return nil, err
+	}
+
+	i := 0
+	var d = new(device.Device)
+	for _, dev := range devs {
+		if dev.MacAddress == macId {
+			d = device.NewDevice(dev.ID, dev.Name, dev.UserId, dev.DeviceTypeId,
+				dev.CreatedAt, dev.UpdatedAt)
+		} else {
+			i++
+		}
+
+	}
+	//var resp, err = r.Db.Query(queryInput)
+	if err != nil {
+		fmt.Errorf("failed to make Get Item API call, %v", err)
+		return nil, err
+	}
+	log.Printf("Get Item passed for device ID %s", macId)
+
+	//if resp.Item == nil {
+	//	msg := "Could not find device with Id '" + macId + "'"
+	//	return nil, errors.New(msg)
+	//} else {
+	//	dev := new(device.Device)
+	//	err = dynamodbattribute.UnmarshalMap(resp.Item, &dev)
+	//	if err != nil {
+	//		panic(fmt.Sprintf("Failed to unmarshal device, %v", err))
+	//		return nil, fmt.Errorf("failed to unmarshall device, %v", err)
+	//	} else {
+	//		return dev, nil
+	//	}
+	//}
+	return d, nil
 }
 
 func (r *DeviceDynamoRepo) Search(query string) ([]*device.Device, error) {
