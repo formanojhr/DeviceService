@@ -26,7 +26,8 @@ frameworkVersion: '>=1.28.0 <2.0.0'
 provider:
   name: aws
   runtime: go1.x
-
+  environment:
+    DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage}
   # you can overwrite defaults here
   stage: dev
   region: us-east-1
@@ -43,20 +44,11 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
       Resource: "arn:aws:dynamodb:us-east-1:466137380188:table/Device"
-#    - Effect: "Allow"
-#      Action:
-#        - "s3:PutObject"
-#      Resource:
-#        Fn::Join:
-#          - ""
-#          - - "arn:aws:s3:::"
-#            - "Ref" : "ServerlessDeploymentBucket"
-#            - "/*"
-
-# you can define service wide environment variables here
-#  environment:
-#    variable1: value1
-
+    - Effect: Allow
+      Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+      Resource: "arn:aws:dynamodb:us-east-1:466137380188:table/Device/index/*"
 package:
 #  exclude:
 #    - ./**
@@ -68,13 +60,19 @@ functions:
     handler: .aws-sam/build/devicefunction/deviceget
     events:
       - http:
-          path: devices
+          path: device/{id}
           method: get
-  DeviceRegister:
-    handler: .aws-sam/build/devicefunction/deviceregister
+  DeviceGetAll:
+    handler: .aws-sam/build/devicefunction/devicelist
     events:
       - http:
           path: devices
+          method: get
+  DeviceRegister:
+    handler: .aws-sam/build/devicefunction/deviceregisterdevice_db_repo
+    events:
+      - http:
+          path: devices/register
           method: post
 #  world:
 #    handler: bin/world
